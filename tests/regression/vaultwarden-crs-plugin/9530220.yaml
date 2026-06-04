@@ -1,0 +1,68 @@
+---
+meta:
+  author: "eilander"
+  description: "Vaultwarden positive-security: HTTP method allowlist"
+rule_id: 9530220
+tests:
+  - test_id: 1
+    desc: "A junk verb (PATCH) is denied"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: PATCH
+          uri: /api/sync
+        output:
+          log:
+            expect_ids: [9530220]
+  - test_id: 2
+    desc: "TRACE is denied"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: TRACE
+          uri: /
+        output:
+          log:
+            expect_ids: [9530220]
+  - test_id: 3
+    desc: "A normal GET is allowed"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: /api/sync
+        output:
+          log:
+            no_expect_ids: [9530220]
+  - test_id: 4
+    desc: "A normal POST is allowed"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+            Content-Type: application/json
+          port: 80
+          method: POST
+          uri: /api/ciphers
+          data: '{"type":1}'
+        output:
+          log:
+            no_expect_ids: [9530220]

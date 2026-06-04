@@ -1,0 +1,72 @@
+---
+meta:
+  author: "eilander"
+  description: "Vaultwarden positive-security: Content-Type enforcement on /api writes"
+rule_id: 9530225
+tests:
+  - test_id: 1
+    desc: "POST /api/ciphers with a non-JSON Content-Type is denied"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+            Content-Type: application/x-www-form-urlencoded
+          port: 80
+          method: POST
+          uri: /api/ciphers
+          data: "type=1&name=x"
+        output:
+          log:
+            expect_ids: [9530225]
+  - test_id: 2
+    desc: "POST /api/ciphers with application/json is allowed"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+            Content-Type: application/json
+          port: 80
+          method: POST
+          uri: /api/ciphers
+          data: '{"type":1}'
+        output:
+          log:
+            no_expect_ids: [9530225]
+  - test_id: 3
+    desc: "Multipart upload to /api/sends/file is allowed (exception)"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+            Content-Type: "multipart/form-data; boundary=xyz"
+          port: 80
+          method: POST
+          uri: /api/sends/file/v2
+          data: "--xyz--"
+        output:
+          log:
+            no_expect_ids: [9530225]
+  - test_id: 4
+    desc: "A GET (no body) is not subject to the Content-Type check"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: /api/sync
+        output:
+          log:
+            no_expect_ids: [9530225]

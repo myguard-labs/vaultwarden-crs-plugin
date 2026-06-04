@@ -41,6 +41,15 @@ It does two things:
 The route map is derived from Vaultwarden's source
 (`src/api/mod.rs` mount points + `src/api/web.rs` static routes), not guessed.
 
+Since **1.1.0** the positive-security layer also: enforces an **HTTP-method
+allowlist** (only `GET/POST/PUT/DELETE/HEAD/OPTIONS` — `TRACE`, `CONNECT`,
+`PATCH`, junk verbs are denied, `9530220`); requires **`application/json`** on
+`/api` writes (except multipart `/api/sends/file*` and cipher attachment
+uploads, `9530225`); **anchors static-file extensions to known prefixes** so a
+deep fake path like `/x/y/z.json` no longer slips through the old global
+`\.<ext>$` suffix; and **feeds the CRS inbound anomaly score** on every block,
+so fail2ban / CRS DOS layers see the probe instead of a silent 404.
+
 ## Requirements
 
 - CRS Version 4.0 or newer

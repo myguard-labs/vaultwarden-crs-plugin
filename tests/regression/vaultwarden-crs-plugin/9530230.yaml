@@ -4,6 +4,36 @@ meta:
   description: "Vaultwarden positive-security: request outside known route map is denied"
 rule_id: 9530230
 tests:
+  - test_id: 8
+    desc: "1.1.0 tightening: a deep fake path ending in a static ext is denied"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: /deep/fake/path/config.json
+        output:
+          log:
+            expect_ids: [9530230]
+  - test_id: 9
+    desc: "1.1.0 tightening: .well-known traversal is denied"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: /.well-known/anything-else
+        output:
+          log:
+            expect_ids: [9530230]
   - test_id: 1
     desc: "A scanner probe path (/wp-login.php) is denied by the route allowlist"
     stages:
