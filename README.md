@@ -153,6 +153,18 @@ go-ftw test cases under [`tests/regression/`](tests/regression/) and
 Set `tx.vaultwarden-plugin_enabled` to `0` (the default), or remove the plugin
 files from the `plugins/` directory entirely.
 
+## Edge hardening (rate limiting, native path/method allowlist)
+
+The CRS plugin is the WAF half. For the **edge half** — per-endpoint rate
+limiting (`/admin`, `/identity/connect/token`, register, send-download),
+a native path allowlist that 404s unknown routes, a method allowlist, security
+headers and body/timeout caps — see [`contrib/angie/vault.conf`](contrib/angie/vault.conf)
+and [`contrib/README.md`](contrib/README.md).
+
+Rate limiting in particular **cannot** be done in the plugin: libmodsecurity3
+(v3) has no persistent per-IP collections, so it belongs at the edge (or in
+fail2ban). Run the plugin and the contrib vhost together for belt-and-braces.
+
 ## Reporting false positives
 
 Open a new issue or pull request. For issues, include:
