@@ -1,0 +1,40 @@
+---
+meta:
+  author: "eilander"
+  description: "Vaultwarden FP exclusion: auth endpoints (token/prelogin) not value-scanned by CRS"
+rule_id: 9530105
+tests:
+  - test_id: 1
+    desc: "A real EncString password value on the token endpoint does not trip CRS attack rules"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:149.0) Gecko/20100101 Firefox/149.0"
+            Accept: "*/*"
+            Content-Type: application/x-www-form-urlencoded
+          port: 80
+          method: POST
+          uri: /identity/connect/token
+          data: "grant_type=password&username=user%40example.com&password=2.aB3kLm9xQ%3D%3D%7Ccipherz%2Bblob%3D%3D&scope=api&client_id=web&deviceIdentifier=11bf1d64-9329-4436"
+        output:
+          log:
+            no_expect_ids: [942100, 942260, 942330, 941100, 932100, 920272, 949110]
+  - test_id: 2
+    desc: "A prelogin JSON body is not value-scanned"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+            Content-Type: application/json
+          port: 80
+          method: POST
+          uri: /identity/accounts/prelogin/password
+          data: '{"email":"user@example.com"}'
+        output:
+          log:
+            no_expect_ids: [942100, 941100, 949110]

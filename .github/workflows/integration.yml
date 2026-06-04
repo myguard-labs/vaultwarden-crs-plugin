@@ -152,7 +152,7 @@ jobs:
         run: |
           echo "Validating rule presence..."
           for ruleid in 9530010 9530012 \
-                        9530099 9530101 9530102 9530103 9530104 \
+                        9530099 9530101 9530102 9530103 9530104 9530105 \
                         9530200 9530201 9530202 9530220 9530225 9530230 9530240 9530245; do
             if ! grep "id:$ruleid" plugins/*.conf > /dev/null; then
               echo "ERROR: Rule ID $ruleid not found"
