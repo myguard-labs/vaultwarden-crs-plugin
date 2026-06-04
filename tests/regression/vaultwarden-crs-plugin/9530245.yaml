@@ -1,0 +1,36 @@
+---
+meta:
+  author: "eilander"
+  description: "Vaultwarden arg-name allowlist: GET query parameter names (opt-in)"
+rule_id: 9530245
+tests:
+  - test_id: 1
+    desc: "An unknown query parameter name is denied"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: "/api/sync?evilparam=1"
+        output:
+          log:
+            expect_ids: [9530245]
+  - test_id: 2
+    desc: "A known query parameter (excludeDomains) is allowed"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: "/api/sync?excludeDomains=true"
+        output:
+          log:
+            no_expect_ids: [9530245]

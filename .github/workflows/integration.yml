@@ -61,26 +61,61 @@ jobs:
           echo "Checking opt-in gate for the positive-security layer..."
           if grep -q 'id:9530201' plugins/vaultwarden-after.conf && \
              grep -q 'vaultwarden-plugin_positive_security' plugins/vaultwarden-after.conf && \
-             grep -q 'ctl:ruleRemoveById=9530202-9530399' plugins/vaultwarden-after.conf; then
+             grep -q 'ctl:ruleRemoveById=9530220-9530239' plugins/vaultwarden-after.conf; then
             echo "✓ Positive-security layer is opt-in (gated by 9530201)"
           else
             echo "ERROR: positive-security opt-in gate (9530201) missing or wrong"
             exit 1
           fi
 
-      - name: Verify NO arg-name allowlist (JSON API, by design)
+      - name: Verify arg-name allowlist is opt-in and independent
         run: |
-          # Unlike a form app, Vaultwarden is a JSON API: arg names are
-          # per-endpoint JSON keys, so an ARGS_NAMES allowlist would
-          # false-block clients. The positive-security layer must be PATH-only.
-          # Guard against anyone re-adding an ARGS_NAMES deny.
-          echo "Checking no ARGS_NAMES allowlist deny was added..."
-          if grep -qE 'SecRule[[:space:]]+ARGS_NAMES' plugins/vaultwarden-after.conf; then
-            echo "ERROR: ARGS_NAMES allowlist found; Vaultwarden is JSON, path-only by design"
-            grep -n 'ARGS_NAMES' plugins/vaultwarden-after.conf
+          # The arg-name allowlist (9530240-9530249) has its OWN flag
+          # (tx.vaultwarden-plugin_argname_allowlist), independent of
+          # positive-security, gated by 9530202. Default OFF so a default
+          # install never arg-name-checks anything.
+          echo "Checking opt-in gate for the arg-name allowlist..."
+          if grep -q 'id:9530202' plugins/vaultwarden-before.conf && \
+             grep -q 'vaultwarden-plugin_argname_allowlist' plugins/vaultwarden-before.conf && \
+             grep -q 'ctl:ruleRemoveById=9530240-9530249' plugins/vaultwarden-before.conf; then
+            echo "✓ Arg-name allowlist is opt-in (gated by 9530202)"
+          else
+            echo "ERROR: arg-name allowlist opt-in gate (9530202) missing or wrong"
             exit 1
           fi
-          echo "✓ Positive-security is PATH-only (no arg-name allowlist)"
+          # Its config seeder must default to 0 (OFF) and not follow enable.
+          grep -q "setvar:'tx.vaultwarden-plugin_argname_allowlist=0'" plugins/vaultwarden-config.conf || \
+            { echo "ERROR: argname_allowlist default is not 0"; exit 1; }
+
+      - name: Verify arg-name allowlist never touches JSON bodies
+        run: |
+          # Vaultwarden is a JSON API: body keys vary per endpoint/client/
+          # version. The arg-name allowlist (opt-in, 9530240/9530245) is
+          # allowed ONLY on the two stable non-JSON surfaces:
+          #   - ARGS_POST_NAMES chained to /identity/connect/token (the one
+          #     x-www-form-urlencoded endpoint), and
+          #   - ARGS_GET_NAMES (query strings).
+          # A bare ARGS_NAMES or ARGS_POST allowlist WOULD inspect JSON body
+          # keys and false-block clients -- forbid those.
+          echo "Checking the arg-name allowlist never inspects JSON bodies..."
+          # A bare ARGS_NAMES or ARGS_POST allowlist (in ANY plugin file) would
+          # inspect JSON body keys -- forbid those.
+          if grep -qE 'SecRule[[:space:]]+ARGS_NAMES[[:space:]]+"!@' plugins/*.conf; then
+            echo "ERROR: bare ARGS_NAMES allowlist found; would inspect JSON body keys"
+            grep -n 'ARGS_NAMES' plugins/*.conf
+            exit 1
+          fi
+          if grep -qE 'SecRule[[:space:]]+ARGS_POST[[:space:]]+"!@' plugins/*.conf; then
+            echo "ERROR: bare ARGS_POST allowlist found; would inspect JSON body keys"
+            exit 1
+          fi
+          # The form-field allowlist (ARGS_POST_NAMES) must be CHAINED to the
+          # token endpoint, not applied globally. Confirm both appear.
+          if grep -q 'ARGS_POST_NAMES' plugins/*.conf; then
+            grep -q 'identity/connect/token' plugins/*.conf || \
+              { echo "ERROR: ARGS_POST_NAMES allowlist is not scoped to the token endpoint"; exit 1; }
+          fi
+          echo "✓ Arg-name allowlist is scoped to form (token) + query only; JSON bodies untouched"
 
       - name: Verify config seeds default vars conditionally
         run: |
@@ -118,7 +153,7 @@ jobs:
           echo "Validating rule presence..."
           for ruleid in 9530010 9530012 \
                         9530099 9530101 9530102 9530103 9530104 \
-                        9530200 9530201 9530220 9530225 9530230; do
+                        9530200 9530201 9530202 9530220 9530225 9530230 9530240 9530245; do
             if ! grep "id:$ruleid" plugins/*.conf > /dev/null; then
               echo "ERROR: Rule ID $ruleid not found"
               exit 1

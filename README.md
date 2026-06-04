@@ -50,6 +50,28 @@ deep fake path like `/x/y/z.json` no longer slips through the old global
 `\.<ext>$` suffix; and **feeds the CRS inbound anomaly score** on every block,
 so fail2ban / CRS DOS layers see the probe instead of a silent 404.
 
+### Argument-name allowlist (1.2.0, experimental, separate opt-in)
+
+Vaultwarden is a JSON API, so a body arg-name allowlist is unsafe (keys vary
+per endpoint/client/version) and is **never** applied to JSON bodies. But the
+two *non-JSON* surfaces are stable and fully enumerable, so 1.2.0 adds an
+optional allowlist for them — gated by its **own** flag
+`tx.vaultwarden-plugin_argname_allowlist` (default OFF, independent of the
+path allowlist):
+
+- **`9530240`** — the `/identity/connect/token` form fields. This is the only
+  `x-www-form-urlencoded` endpoint; its field set is fixed by the
+  `ConnectData` struct in `src/api/identity.rs` (verified against source,
+  case-insensitive, snake_case + flattened variants). Scoped via
+  `ARGS_POST_NAMES` to that exact path — JSON bodies elsewhere are untouched.
+- **`9530245`** — GET query-string parameter names (`ARGS_GET_NAMES`).
+
+These live in `vaultwarden-before.conf` on purpose: their deny must evaluate
+**before** the CRS anomaly-blocking rule `949110` (otherwise a request CRS
+already scored ≥5 is blocked there first and the allowlist deny is never
+reached). Enable per vhost only after a DetectionOnly burn-in:
+`setvar:tx.vaultwarden-plugin_argname_allowlist=1`.
+
 ## Requirements
 
 - CRS Version 4.0 or newer

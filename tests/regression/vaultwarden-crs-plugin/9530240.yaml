@@ -1,0 +1,57 @@
+---
+meta:
+  author: "eilander"
+  description: "Vaultwarden arg-name allowlist: /identity/connect/token form fields (opt-in)"
+rule_id: 9530240
+tests:
+  - test_id: 1
+    desc: "An unknown form field on the token endpoint is denied"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+            Content-Type: application/x-www-form-urlencoded
+          port: 80
+          method: POST
+          uri: /identity/connect/token
+          data: "grant_type=password&username=u&password=p&myextrafield=hello"
+        output:
+          log:
+            expect_ids: [9530240]
+  - test_id: 2
+    desc: "Only known OAuth fields on the token endpoint pass"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+            Content-Type: application/x-www-form-urlencoded
+          port: 80
+          method: POST
+          uri: /identity/connect/token
+          data: "grant_type=password&username=u&password=p&scope=api&client_id=cli&deviceidentifier=d&devicename=n&devicetype=0"
+        output:
+          log:
+            no_expect_ids: [9530240]
+  - test_id: 3
+    desc: "A JSON body on another endpoint is NOT arg-name-checked (unknown key passes)"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+            Content-Type: application/json
+          port: 80
+          method: POST
+          uri: /api/ciphers
+          data: '{"madeUpKey":1,"anotherWeirdKey":"x"}'
+        output:
+          log:
+            no_expect_ids: [9530240, 9530245]
