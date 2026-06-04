@@ -1,4 +1,6 @@
 > 🔗 **Vaultwarden:** [github.com/dani-garcia/vaultwarden](https://github.com/dani-garcia/vaultwarden)
+>
+> 📖 **Read the write-up:** [Self-Hosted Vaultwarden — Docker Setup, Clients & Full Guide](https://deb.myguard.nl/2026/05/self-hosted-password-manager-with-vaultwarden/)
 
 # Vaultwarden (Bitwarden) OWASP CRS Plugin
 
@@ -132,5 +134,6 @@ Open a new issue or pull request. For issues, include:
 ## See also
 
 - Vaultwarden: <https://github.com/dani-garcia/vaultwarden>
+- Write-up / deployment guide: [Self-Hosted Vaultwarden on deb.myguard.nl](https://deb.myguard.nl/2026/05/self-hosted-password-manager-with-vaultwarden/)
 - ViMbAdmin CRS plugin (same author, form-app variant with arg-name
   allowlist): <https://github.com/eilandert/vimbadmin-crs-plugin>
