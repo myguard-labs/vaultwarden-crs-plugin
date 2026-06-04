@@ -19,8 +19,12 @@ tests:
         output:
           log:
             expect_ids: [9530220]
+  # NOTE: don't test TRACE/CONNECT here -- nginx/Angie reject those at the
+  # HTTP core (405) BEFORE ModSecurity phase 1 runs, so 9530220 never logs and
+  # the test would fail on the nginx engine. An unknown verb reaches modsec on
+  # both engines.
   - test_id: 2
-    desc: "TRACE is denied"
+    desc: "An unknown verb (FOOBAR) is denied"
     stages:
       - input:
           dest_addr: 127.0.0.1
@@ -29,7 +33,7 @@ tests:
             User-Agent: OWASP CRS
             Accept: "*/*"
           port: 80
-          method: TRACE
+          method: FOOBAR
           uri: /
         output:
           log:
