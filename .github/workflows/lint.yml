@@ -29,7 +29,8 @@ jobs:
       - name: Check Rule ID ranges
         run: |
           # Validate that all rules are in the allocated range 9530000-9530999
-          grep -o 'id:[0-9]*' plugins/*.conf | cut -d: -f2 | while read id; do
+          # (skip comment lines so commented example IDs don't count)
+          grep -vh '^[[:space:]]*#' plugins/*.conf | grep -o 'id:[0-9]*' | cut -d: -f2 | while read id; do
             if [ $id -lt 9530000 ] || [ $id -gt 9530999 ]; then
               echo "ERROR: Rule ID $id outside allocated range (9530000-9530999)"
               exit 1
@@ -39,8 +40,9 @@ jobs:
 
       - name: Check for duplicate Rule IDs
         run: |
-          # Ensure no duplicate rule IDs
-          dupes=$(grep -oh 'id:[0-9]*' plugins/*.conf | cut -d: -f2 | sort | uniq -d)
+          # Ensure no duplicate rule IDs (skip comment lines so commented
+          # example IDs don't trip a false duplicate)
+          dupes=$(grep -vh '^[[:space:]]*#' plugins/*.conf | grep -oh 'id:[0-9]*' | cut -d: -f2 | sort | uniq -d)
           if [ -n "$dupes" ]; then
             echo "ERROR: Duplicate Rule IDs found: $dupes"
             exit 1
