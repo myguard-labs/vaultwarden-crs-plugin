@@ -1,0 +1,111 @@
+---
+meta:
+  author: "eilander"
+  description: "Vaultwarden positive-security: request outside known route map is denied"
+rule_id: 9530230
+tests:
+  - test_id: 1
+    desc: "A scanner probe path (/wp-login.php) is denied by the route allowlist"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: /wp-login.php
+        output:
+          log:
+            expect_ids: [9530230]
+  - test_id: 2
+    desc: "A dotfile probe (/.env) is denied by the route allowlist"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: /.env
+        output:
+          log:
+            expect_ids: [9530230]
+  - test_id: 3
+    desc: "A real Vaultwarden API route passes the route allowlist"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: /api/sync
+        output:
+          log:
+            no_expect_ids: [9530230]
+  - test_id: 4
+    desc: "The identity token endpoint passes the route allowlist"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: /identity/connect/token
+        output:
+          log:
+            no_expect_ids: [9530230]
+  - test_id: 5
+    desc: "An icon proxy path passes the route allowlist"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: /icons/example.com/icon.png
+        output:
+          log:
+            no_expect_ids: [9530230]
+  - test_id: 6
+    desc: "A hashed web-vault static bundle passes the route allowlist"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: /app/main.ccecbc3360eea592b940.js
+        output:
+          log:
+            no_expect_ids: [9530230]
+  - test_id: 7
+    desc: "The admin-panel bundle served at root passes the route allowlist"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: /bootstrap.bundle.js
+        output:
+          log:
+            no_expect_ids: [9530230]

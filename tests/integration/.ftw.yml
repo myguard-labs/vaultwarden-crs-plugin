@@ -1,0 +1,10 @@
+---
+# go-ftw v2 schema. testoverride.input.* honoured because the koanf tag is
+# "input". The apache backend listens on :8001; the nginx workflow rewrites
+# the port + logfile at run time.
+logfile: tests/logs/apache/audit.log
+testoverride:
+  input:
+    dest_addr: "127.0.0.1"
+    port: 8001
+    override_empty_host_header: true

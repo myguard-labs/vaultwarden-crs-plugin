@@ -1,0 +1,23 @@
+---
+meta:
+  author: "eilander"
+  description: "Vaultwarden FP exclusion: admin-panel token field is exempt from CRS target checks"
+rule_id: 9530101
+tests:
+  - test_id: 1
+    desc: "Admin login with an Argon2 PHC token does not trip SQLi/encoding on ARGS:token"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+            Content-Type: application/x-www-form-urlencoded
+          port: 80
+          method: POST
+          uri: /admin
+          data: "token=%24argon2id%24v%3D19%24m%3D65540%2Ct%3D3%2Cp%3D4%24c29tZXNhbHQ%24aGFzaHZhbHVl"
+        output:
+          log:
+            no_expect_ids: [942100, 942260, 942330, 941100]

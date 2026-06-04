@@ -1,0 +1,66 @@
+---
+on: [push, pull_request]        # yamllint disable-line rule:truthy
+name: Lint
+
+permissions:
+  contents: read
+
+jobs:
+  validate-files:
+    name: Validate Plugin Files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check @pmFromFile references
+        run: |
+          # Validate that all @pmFromFile references point to existing .data files
+          grep -r "@pmFromFile" plugins/*.conf | while read line; do
+            file=$(echo $line | sed -n 's/.*@pmFromFile \([^ ]*\).*/\1/p')
+            if [ -n "$file" ]; then
+              if [ ! -f "plugins/$file" ]; then
+                echo "ERROR: Referenced file not found: $file"
+                exit 1
+              fi
+            fi
+          done
+          echo "✓ All @pmFromFile references valid"
+
+      - name: Check Rule ID ranges
+        run: |
+          # Validate that all rules are in the allocated range 9530000-9530999
+          grep -o 'id:[0-9]*' plugins/*.conf | cut -d: -f2 | while read id; do
+            if [ $id -lt 9530000 ] || [ $id -gt 9530999 ]; then
+              echo "ERROR: Rule ID $id outside allocated range (9530000-9530999)"
+              exit 1
+            fi
+          done
+          echo "✓ All Rule IDs in valid range"
+
+      - name: Check for duplicate Rule IDs
+        run: |
+          # Ensure no duplicate rule IDs
+          dupes=$(grep -oh 'id:[0-9]*' plugins/*.conf | cut -d: -f2 | sort | uniq -d)
+          if [ -n "$dupes" ]; then
+            echo "ERROR: Duplicate Rule IDs found: $dupes"
+            exit 1
+          fi
+          echo "✓ No duplicate Rule IDs"
+
+      - name: Validate test file references
+        run: |
+          # Check that regression test files reference valid rule IDs
+          for testfile in tests/regression/bitwarden-crs-plugin/*.yaml; do
+            ruleid=$(basename $testfile .yaml)
+            # Verify this rule ID exists in the plugin config files
+            if ! grep -q "id:$ruleid" plugins/*.conf; then
+              echo "ERROR: Test file $testfile references non-existent rule ID $ruleid"
+              exit 1
+            fi
+          done
+          echo "✓ All regression test files reference valid rule IDs"
+
+  plugin-lint:
+    needs: validate-files
+    # Official OWASP CRS plugin lint (pinned SHA for v3.0.0).
+    uses: coreruleset/crs-plugin-test-action/.github/workflows/lint.yaml@7e1ee6d07105ae3cb6eec95e45acb5e1a895e3d4

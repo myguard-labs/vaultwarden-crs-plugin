@@ -1,0 +1,144 @@
+---
+on: [push, pull_request]          # yamllint disable-line rule:truthy
+name: Integration tests
+
+permissions:
+  contents: read
+
+jobs:
+  validate-structure:
+    name: Validate Plugin Structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify plugin disable switch + ruleRemoveById range
+        run: |
+          # CRS convention: the master off-switch lives at <base>+099 and
+          # disables the rule block via ctl:ruleRemoveById. Verify it exists
+          # and that the disabled range stays inside 9530100-9530199.
+          echo "Checking master disable rule 9530099..."
+          if grep -q 'id:9530099' plugins/bitwarden-before.conf && \
+             grep -q 'ctl:ruleRemoveById=9530100-9530199' plugins/bitwarden-before.conf; then
+            echo "✓ 9530099 disables the 9530100-9530199 block"
+          else
+            echo "ERROR: master disable rule 9530099 missing or wrong range"
+            exit 1
+          fi
+
+      - name: Verify NO host gate (scoping is the per-vhost enable flag)
+        run: |
+          # Scoping is the per-vhost enable flag (tx.bitwarden-plugin_enabled,
+          # OFF by default, set to 1 only in the Vaultwarden server/location
+          # block). No Host-header gate may exist in any plugin file.
+          echo "Checking the host gate is removed..."
+          if grep -q 'bitwarden_host' plugins/*.conf; then
+            echo "ERROR: tx.bitwarden_host referenced; host gate not allowed"
+            grep -n 'bitwarden_host' plugins/*.conf
+            exit 1
+          fi
+          echo "✓ No host gate; scoping is the enable flag"
+
+      - name: Verify enable flag gates before + after
+        run: |
+          # Both the exclusion block (before) and the allowlist layer (after)
+          # must be skipped unless tx.bitwarden-plugin_enabled == 1.
+          echo "Checking enable-flag gates..."
+          FAILED=0
+          grep -q 'TX:bitwarden-plugin_enabled "!@eq 1"' plugins/bitwarden-before.conf || \
+            { echo "ERROR: before.conf missing enable-flag gate (9530099)"; FAILED=1; }
+          grep -q 'TX:bitwarden-plugin_enabled "!@eq 1"' plugins/bitwarden-after.conf || \
+            { echo "ERROR: after.conf missing enable-flag gate (9530200)"; FAILED=1; }
+          [ "$FAILED" -eq 0 ] && echo "✓ Enable flag gates before + after"
+          [ "$FAILED" -eq 0 ] || exit 1
+
+      - name: Verify positive-security layer is opt-in
+        run: |
+          # The path-allowlist deny rule must be skipped unless
+          # tx.bitwarden-plugin_positive_security == 1, so a default install
+          # never blocks. Rule 9530201 enforces this (9530200 gates the whole
+          # plugin on tx.bitwarden-plugin_enabled).
+          echo "Checking opt-in gate for the positive-security layer..."
+          if grep -q 'id:9530201' plugins/bitwarden-after.conf && \
+             grep -q 'bitwarden-plugin_positive_security' plugins/bitwarden-after.conf && \
+             grep -q 'ctl:ruleRemoveById=9530202-9530399' plugins/bitwarden-after.conf; then
+            echo "✓ Positive-security layer is opt-in (gated by 9530201)"
+          else
+            echo "ERROR: positive-security opt-in gate (9530201) missing or wrong"
+            exit 1
+          fi
+
+      - name: Verify NO arg-name allowlist (JSON API, by design)
+        run: |
+          # Unlike a form app, Vaultwarden is a JSON API: arg names are
+          # per-endpoint JSON keys, so an ARGS_NAMES allowlist would
+          # false-block clients. The positive-security layer must be PATH-only.
+          # Guard against anyone re-adding an ARGS_NAMES deny.
+          echo "Checking no ARGS_NAMES allowlist deny was added..."
+          if grep -qE 'SecRule[[:space:]]+ARGS_NAMES' plugins/bitwarden-after.conf; then
+            echo "ERROR: ARGS_NAMES allowlist found; Vaultwarden is JSON, path-only by design"
+            grep -n 'ARGS_NAMES' plugins/bitwarden-after.conf
+            exit 1
+          fi
+          echo "✓ Positive-security is PATH-only (no arg-name allowlist)"
+
+      - name: Verify config seeds default vars conditionally
+        run: |
+          # Config rules must only seed each tx var if unset (&TX:var @eq 0),
+          # per CRS convention, so a global override wins.
+          echo "Checking conditional defaults in bitwarden-config.conf..."
+          FAILED=0
+          for id in 9530010 9530012; do
+            if ! grep -q "id:$id" plugins/bitwarden-config.conf; then
+              echo "ERROR: config rule $id missing"
+              FAILED=1
+            fi
+          done
+          grep -q '&TX:bitwarden-plugin_enabled "@eq 0"' plugins/bitwarden-config.conf || \
+            { echo "ERROR: enabled var not seeded conditionally"; FAILED=1; }
+          # OFF by default: the seeder must set the enable flag to 0, not 1.
+          grep -q "setvar:'tx.bitwarden-plugin_enabled=0'" plugins/bitwarden-config.conf || \
+            { echo "ERROR: enable flag default is not 0 (plugin must be off by default)"; FAILED=1; }
+          [ "$FAILED" -eq 0 ] && echo "✓ Config seeds defaults conditionally"
+          [ "$FAILED" -eq 0 ] || exit 1
+
+      - name: "Verify ver: tag on every rule"
+        run: |
+          # CRS plugin convention: each rule carries a ver: tag matching the
+          # plugin version. Flag any SecRule/SecAction id: without a ver:.
+          echo "Checking every rule carries a ver: tag..."
+          MISSING=0
+          awk 'BEGIN{RS=""} /id:[0-9]/{ if ($0 !~ /ver:/) { print "rule block missing ver:"; bad=1 } } END{ exit bad?1:0 }' \
+            <(sed -e ':a' -e '/\\$/N; s/\\\n//; ta' plugins/*.conf) || MISSING=1
+          [ "$MISSING" -eq 0 ] && echo "✓ All rules carry a ver: tag"
+          [ "$MISSING" -eq 0 ] || exit 1
+
+      - name: Verify expected rules present
+        run: |
+          echo "Validating rule presence..."
+          for ruleid in 9530010 9530012 \
+                        9530099 9530101 9530102 9530103 9530104 \
+                        9530200 9530201 9530230; do
+            if ! grep "id:$ruleid" plugins/*.conf > /dev/null; then
+              echo "ERROR: Rule ID $ruleid not found"
+              exit 1
+            fi
+          done
+          echo "✓ All expected rules present"
+
+# NOTE: the official coreruleset/crs-plugin-test-action integration runner is
+# intentionally NOT used here (same reasoning as the ViMbAdmin plugin): at its
+# pinned release it runs tests/regression/ against vanilla CRS with the plugin
+# at its SHIPPED defaults and offers no working hook to set TX vars. This
+# plugin's deny layer is OPT-IN and the plugin is OFF by default, so on shipped
+# defaults 9530230 never fires and the exclusions are skipped — the suite
+# cannot pass there by design.
+#
+# Real functional coverage lives in the two dedicated workflows, which build a
+# shared CRS image, enable the plugin + the positive-security layer
+# (tests/integration/crs/crs-main.conf), then run the full go-ftw regression +
+# security corpus on real engines:
+#   - .github/workflows/apache-modsecurity2.yml   (Apache + ModSecurity v2)
+#   - .github/workflows/nginx-libmodsecurity3.yml (Angie + libmodsecurity3)
+# Plus the official plugin lint (.github/workflows/lint.yml). The structure
+# gates above stay as the integration smoke test.

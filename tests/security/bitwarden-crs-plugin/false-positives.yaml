@@ -1,0 +1,100 @@
+---
+meta:
+  author: "eilander"
+  description: "False-positive corpus: legitimate Vaultwarden traffic that MUST NOT be blocked"
+rule_id: 9530001
+tests:
+  - test_id: 1
+    desc: "fp-token-grant: OAuth password grant with high-entropy hashes is allowed"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: "Bitwarden_Mobile/2026.4.1"
+            Accept: "*/*"
+            Content-Type: application/x-www-form-urlencoded
+          port: 80
+          method: POST
+          uri: /identity/connect/token
+          data: "grant_type=password&username=user%40example.com&password=2GjE%2FQ7%2BdYx5%2Bl5%3D%3D&scope=api+offline_access&client_id=mobile&deviceidentifier=4d3e2b1a-0000-1111-2222-333344445555&devicename=phone&devicetype=0"
+        output:
+          log:
+            no_expect_ids: [9530230, 942100, 942260, 942330, 941100, 920273]
+  - test_id: 2
+    desc: "fp-cipher-create: an encrypted cipher (EncString blobs) JSON POST is allowed"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: "Bitwarden_Browser/2026.4.1"
+            Accept: "*/*"
+            Content-Type: application/json
+          port: 80
+          method: POST
+          uri: /api/ciphers
+          data: '{"type":1,"name":"2.abc123|def456+ghi789/jkl==|mnop012345==","notes":"2.xyz|abc/def+ghi==|jkl==","login":{"username":"2.uvw|xyz==|abc==","password":"2.def|ghi/jkl+mno==|pqr=="}}'
+        output:
+          log:
+            no_expect_ids: [9530230, 942100, 942260, 942330, 941100, 933160]
+  - test_id: 3
+    desc: "fp-icon-domain: an icon fetch for a user domain is not path-traversal-blocked"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: /icons/sub.example.co.uk/icon.png
+        output:
+          log:
+            no_expect_ids: [9530230, 930100, 930110]
+  - test_id: 4
+    desc: "fp-sync: the vault sync GET is allowed"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: "Bitwarden_Desktop/2026.4.1"
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: "/api/sync?excludeDomains=true"
+        output:
+          log:
+            no_expect_ids: [9530230, 942100, 941100]
+  - test_id: 5
+    desc: "fp-send-access: anonymous Send download path is allowed"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: "/api/sends/abc12345/def67890?t=opaquetoken"
+        output:
+          log:
+            no_expect_ids: [9530230, 942100, 941100]
+  - test_id: 6
+    desc: "fp-notifications-hub: the WebSocket negotiate path is allowed"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: POST
+          uri: "/notifications/hub/negotiate?negotiateVersion=1"
+        output:
+          log:
+            no_expect_ids: [9530230]
