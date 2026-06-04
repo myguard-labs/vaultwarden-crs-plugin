@@ -50,7 +50,7 @@ COPY tests/integration/crs/crs-main.conf /opt/crs/crs-main.conf
 
 # Sanity: every file the chain references must exist.
 RUN test -f /opt/crs/crs-setup.conf \
- && test -f /opt/crs/plugins/bitwarden-before.conf \
- && test -f /opt/crs/plugins/bitwarden-after.conf \
- && test -f /opt/crs/plugins/bitwarden-config.conf \
+ && test -f /opt/crs/plugins/vaultwarden-before.conf \
+ && test -f /opt/crs/plugins/vaultwarden-after.conf \
+ && test -f /opt/crs/plugins/vaultwarden-config.conf \
  && ls /opt/crs/rules/*.conf >/dev/null

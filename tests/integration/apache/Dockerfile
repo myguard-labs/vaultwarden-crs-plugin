@@ -7,7 +7,7 @@
 # `apache2ctl -t` (== apachectl configtest) is run at BUILD time: an invalid
 # rule fails `docker build`, before any test runs.
 # ---------------------------------------------------------------------------
-ARG CRS_IMAGE=bitwarden-crs:latest
+ARG CRS_IMAGE=vaultwarden-crs:latest
 FROM ${CRS_IMAGE} AS crs
 
 FROM debian:bookworm-slim

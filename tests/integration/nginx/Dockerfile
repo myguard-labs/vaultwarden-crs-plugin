@@ -5,7 +5,7 @@
 # deb.myguard.nl apt repo, so this catches v3-specific parse behaviour.
 # `angie -t` is the BUILD-TIME gate.
 # ---------------------------------------------------------------------------
-ARG CRS_IMAGE=bitwarden-crs:latest
+ARG CRS_IMAGE=vaultwarden-crs:latest
 FROM ${CRS_IMAGE} AS crs
 
 FROM debian:bookworm-slim

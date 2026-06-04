@@ -2,7 +2,7 @@
 
 # Vaultwarden (Bitwarden) OWASP CRS Plugin
 
-![Lint](https://github.com/eilandert/bitwarden-crs-plugin/actions/workflows/lint.yml/badge.svg) ![Integration tests](https://github.com/eilandert/bitwarden-crs-plugin/actions/workflows/integration.yml/badge.svg) ![Apache + ModSecurity v2](https://github.com/eilandert/bitwarden-crs-plugin/actions/workflows/apache-modsecurity2.yml/badge.svg) ![nginx + libmodsecurity3](https://github.com/eilandert/bitwarden-crs-plugin/actions/workflows/nginx-libmodsecurity3.yml/badge.svg)
+![Lint](https://github.com/eilandert/vaultwarden-crs-plugin/actions/workflows/lint.yml/badge.svg) ![Integration tests](https://github.com/eilandert/vaultwarden-crs-plugin/actions/workflows/integration.yml/badge.svg) ![Apache + ModSecurity v2](https://github.com/eilandert/vaultwarden-crs-plugin/actions/workflows/apache-modsecurity2.yml/badge.svg) ![nginx + libmodsecurity3](https://github.com/eilandert/vaultwarden-crs-plugin/actions/workflows/nginx-libmodsecurity3.yml/badge.svg)
 
 A drop-in [OWASP CRS](https://coreruleset.org/) plugin that makes the Core
 Rule Set play nicely with **[Vaultwarden](https://github.com/dani-garcia/vaultwarden)**
@@ -22,13 +22,13 @@ down to Vaultwarden's known route map.
 
 It does two things:
 
-1. **False-positive exclusions** (`bitwarden-before.conf`) — surgical,
+1. **False-positive exclusions** (`vaultwarden-before.conf`) — surgical,
    host-scoped exclusions so legitimate inputs (the Argon2 admin `token`,
    the OAuth password-grant hashes on `/identity/connect/token`, the
    EncString cipher/account/send blobs under `/api`, user-supplied icon
    domains) don't trip CRS.
 
-2. **Positive security / path allowlist** (`bitwarden-after.conf`,
+2. **Positive security / path allowlist** (`vaultwarden-after.conf`,
    **opt-in**) — *allow Vaultwarden's real routes, deny everything else*.
    Any path outside Vaultwarden's mount points (`/api`, `/identity`,
    `/admin`, `/events`, `/icons`, `/notifications`, `/attachments`, the
@@ -49,9 +49,9 @@ The route map is derived from Vaultwarden's source
 Copy the three files into your CRS `plugins/` directory:
 
 ```
-plugins/bitwarden-config.conf
-plugins/bitwarden-before.conf
-plugins/bitwarden-after.conf
+plugins/vaultwarden-config.conf
+plugins/vaultwarden-before.conf
+plugins/vaultwarden-after.conf
 ```
 
 CRS loads `plugins/*-config.conf`, then `*-before.conf` (before the rules),
@@ -59,12 +59,12 @@ then `*-after.conf` (after the rules) automatically.
 
 ## Configure
 
-Edit `bitwarden-config.conf`:
+Edit `vaultwarden-config.conf`:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `tx.bitwarden-plugin_enabled` | `0` | Master on/off. **OFF by default** — the plugin weakens CRS on the Vaultwarden routes, so it must be enabled per vhost, not globally. Set to `1` only in the Vaultwarden server/location block (see Roll-out). |
-| `tx.bitwarden-plugin_positive_security` | follows `_enabled` | Turn the path-allowlist layer on/off. Defaults to the enable flag; set to `0` explicitly in the enable block to run exclusions without the allowlist. |
+| `tx.vaultwarden-plugin_enabled` | `0` | Master on/off. **OFF by default** — the plugin weakens CRS on the Vaultwarden routes, so it must be enabled per vhost, not globally. Set to `1` only in the Vaultwarden server/location block (see Roll-out). |
+| `tx.vaultwarden-plugin_positive_security` | follows `_enabled` | Turn the path-allowlist layer on/off. Defaults to the enable flag; set to `0` explicitly in the enable block to run exclusions without the allowlist. |
 
 Scoping is done entirely by the per-vhost enable flag — there is **no Host
 gate**. Enable the plugin only on the Vaultwarden vhost, e.g. (Angie /
@@ -75,7 +75,7 @@ server {
     server_name vault.example.com;
     modsecurity on;
     modsecurity_rules '
-        SecAction "id:9530001,phase:1,nolog,pass,setvar:tx.bitwarden-plugin_enabled=1"
+        SecAction "id:9530001,phase:1,nolog,pass,setvar:tx.vaultwarden-plugin_enabled=1"
     ';
     # ...
 }
@@ -87,13 +87,13 @@ On Apache/mod_security2, set the same variable inside the matching
 ## Roll-out
 
 1. Install, then enable the plugin in the Vaultwarden vhost only
-   (`setvar:tx.bitwarden-plugin_enabled=1`). The exclusions are safe
+   (`setvar:tx.vaultwarden-plugin_enabled=1`). The exclusions are safe
    immediately and never touch other vhosts on the same CRS engine.
 2. Run CRS in **DetectionOnly** and watch the audit log for `9530230` hits
    — those are paths missing from the route allowlist. If you front
    Vaultwarden with extra routes (a reverse-proxy health check, a custom
    connector), add them to the inline allowlist regex on rule `9530230` in
-   `bitwarden-after.conf`.
+   `vaultwarden-after.conf`.
 3. Flip CRS back to blocking mode.
 
 Rule ID range: **9,530,000 – 9,530,999** (block base 9,530,000; free in the
@@ -117,7 +117,7 @@ go-ftw test cases under [`tests/regression/`](tests/regression/) and
 
 ## Disabling the plugin
 
-Set `tx.bitwarden-plugin_enabled` to `0` (the default), or remove the plugin
+Set `tx.vaultwarden-plugin_enabled` to `0` (the default), or remove the plugin
 files from the `plugins/` directory entirely.
 
 ## Reporting false positives

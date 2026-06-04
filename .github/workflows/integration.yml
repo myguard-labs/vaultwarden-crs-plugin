@@ -18,8 +18,8 @@ jobs:
           # disables the rule block via ctl:ruleRemoveById. Verify it exists
           # and that the disabled range stays inside 9530100-9530199.
           echo "Checking master disable rule 9530099..."
-          if grep -q 'id:9530099' plugins/bitwarden-before.conf && \
-             grep -q 'ctl:ruleRemoveById=9530100-9530199' plugins/bitwarden-before.conf; then
+          if grep -q 'id:9530099' plugins/vaultwarden-before.conf && \
+             grep -q 'ctl:ruleRemoveById=9530100-9530199' plugins/vaultwarden-before.conf; then
             echo "✓ 9530099 disables the 9530100-9530199 block"
           else
             echo "ERROR: master disable rule 9530099 missing or wrong range"
@@ -28,13 +28,13 @@ jobs:
 
       - name: Verify NO host gate (scoping is the per-vhost enable flag)
         run: |
-          # Scoping is the per-vhost enable flag (tx.bitwarden-plugin_enabled,
+          # Scoping is the per-vhost enable flag (tx.vaultwarden-plugin_enabled,
           # OFF by default, set to 1 only in the Vaultwarden server/location
           # block). No Host-header gate may exist in any plugin file.
           echo "Checking the host gate is removed..."
-          if grep -q 'bitwarden_host' plugins/*.conf; then
-            echo "ERROR: tx.bitwarden_host referenced; host gate not allowed"
-            grep -n 'bitwarden_host' plugins/*.conf
+          if grep -q 'vaultwarden_host' plugins/*.conf; then
+            echo "ERROR: tx.vaultwarden_host referenced; host gate not allowed"
+            grep -n 'vaultwarden_host' plugins/*.conf
             exit 1
           fi
           echo "✓ No host gate; scoping is the enable flag"
@@ -42,12 +42,12 @@ jobs:
       - name: Verify enable flag gates before + after
         run: |
           # Both the exclusion block (before) and the allowlist layer (after)
-          # must be skipped unless tx.bitwarden-plugin_enabled == 1.
+          # must be skipped unless tx.vaultwarden-plugin_enabled == 1.
           echo "Checking enable-flag gates..."
           FAILED=0
-          grep -q 'TX:bitwarden-plugin_enabled "!@eq 1"' plugins/bitwarden-before.conf || \
+          grep -q 'TX:vaultwarden-plugin_enabled "!@eq 1"' plugins/vaultwarden-before.conf || \
             { echo "ERROR: before.conf missing enable-flag gate (9530099)"; FAILED=1; }
-          grep -q 'TX:bitwarden-plugin_enabled "!@eq 1"' plugins/bitwarden-after.conf || \
+          grep -q 'TX:vaultwarden-plugin_enabled "!@eq 1"' plugins/vaultwarden-after.conf || \
             { echo "ERROR: after.conf missing enable-flag gate (9530200)"; FAILED=1; }
           [ "$FAILED" -eq 0 ] && echo "✓ Enable flag gates before + after"
           [ "$FAILED" -eq 0 ] || exit 1
@@ -55,13 +55,13 @@ jobs:
       - name: Verify positive-security layer is opt-in
         run: |
           # The path-allowlist deny rule must be skipped unless
-          # tx.bitwarden-plugin_positive_security == 1, so a default install
+          # tx.vaultwarden-plugin_positive_security == 1, so a default install
           # never blocks. Rule 9530201 enforces this (9530200 gates the whole
-          # plugin on tx.bitwarden-plugin_enabled).
+          # plugin on tx.vaultwarden-plugin_enabled).
           echo "Checking opt-in gate for the positive-security layer..."
-          if grep -q 'id:9530201' plugins/bitwarden-after.conf && \
-             grep -q 'bitwarden-plugin_positive_security' plugins/bitwarden-after.conf && \
-             grep -q 'ctl:ruleRemoveById=9530202-9530399' plugins/bitwarden-after.conf; then
+          if grep -q 'id:9530201' plugins/vaultwarden-after.conf && \
+             grep -q 'vaultwarden-plugin_positive_security' plugins/vaultwarden-after.conf && \
+             grep -q 'ctl:ruleRemoveById=9530202-9530399' plugins/vaultwarden-after.conf; then
             echo "✓ Positive-security layer is opt-in (gated by 9530201)"
           else
             echo "ERROR: positive-security opt-in gate (9530201) missing or wrong"
@@ -75,9 +75,9 @@ jobs:
           # false-block clients. The positive-security layer must be PATH-only.
           # Guard against anyone re-adding an ARGS_NAMES deny.
           echo "Checking no ARGS_NAMES allowlist deny was added..."
-          if grep -qE 'SecRule[[:space:]]+ARGS_NAMES' plugins/bitwarden-after.conf; then
+          if grep -qE 'SecRule[[:space:]]+ARGS_NAMES' plugins/vaultwarden-after.conf; then
             echo "ERROR: ARGS_NAMES allowlist found; Vaultwarden is JSON, path-only by design"
-            grep -n 'ARGS_NAMES' plugins/bitwarden-after.conf
+            grep -n 'ARGS_NAMES' plugins/vaultwarden-after.conf
             exit 1
           fi
           echo "✓ Positive-security is PATH-only (no arg-name allowlist)"
@@ -86,18 +86,18 @@ jobs:
         run: |
           # Config rules must only seed each tx var if unset (&TX:var @eq 0),
           # per CRS convention, so a global override wins.
-          echo "Checking conditional defaults in bitwarden-config.conf..."
+          echo "Checking conditional defaults in vaultwarden-config.conf..."
           FAILED=0
           for id in 9530010 9530012; do
-            if ! grep -q "id:$id" plugins/bitwarden-config.conf; then
+            if ! grep -q "id:$id" plugins/vaultwarden-config.conf; then
               echo "ERROR: config rule $id missing"
               FAILED=1
             fi
           done
-          grep -q '&TX:bitwarden-plugin_enabled "@eq 0"' plugins/bitwarden-config.conf || \
+          grep -q '&TX:vaultwarden-plugin_enabled "@eq 0"' plugins/vaultwarden-config.conf || \
             { echo "ERROR: enabled var not seeded conditionally"; FAILED=1; }
           # OFF by default: the seeder must set the enable flag to 0, not 1.
-          grep -q "setvar:'tx.bitwarden-plugin_enabled=0'" plugins/bitwarden-config.conf || \
+          grep -q "setvar:'tx.vaultwarden-plugin_enabled=0'" plugins/vaultwarden-config.conf || \
             { echo "ERROR: enable flag default is not 0 (plugin must be off by default)"; FAILED=1; }
           [ "$FAILED" -eq 0 ] && echo "✓ Config seeds defaults conditionally"
           [ "$FAILED" -eq 0 ] || exit 1

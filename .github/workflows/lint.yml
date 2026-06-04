@@ -50,7 +50,7 @@ jobs:
       - name: Validate test file references
         run: |
           # Check that regression test files reference valid rule IDs
-          for testfile in tests/regression/bitwarden-crs-plugin/*.yaml; do
+          for testfile in tests/regression/vaultwarden-crs-plugin/*.yaml; do
             ruleid=$(basename $testfile .yaml)
             # Verify this rule ID exists in the plugin config files
             if ! grep -q "id:$ruleid" plugins/*.conf; then

@@ -14,7 +14,7 @@
 # for go-ftw.
 services:
   crs:
-    image: bitwarden-crs:latest
+    image: vaultwarden-crs:latest
     build:
       context: ../..
       dockerfile: tests/integration/crs/Dockerfile
@@ -23,12 +23,12 @@ services:
     restart: "no"
 
   apache:
-    image: bitwarden-apache:latest
+    image: vaultwarden-apache:latest
     build:
       context: ../..
       dockerfile: tests/integration/apache/Dockerfile
       args:
-        CRS_IMAGE: bitwarden-crs:latest
+        CRS_IMAGE: vaultwarden-crs:latest
     depends_on: [crs]
     ports:
       - "8001:80"
@@ -36,12 +36,12 @@ services:
       - ../logs/apache:/var/log/modsec
 
   nginx:
-    image: bitwarden-nginx:latest
+    image: vaultwarden-nginx:latest
     build:
       context: ../..
       dockerfile: tests/integration/nginx/Dockerfile
       args:
-        CRS_IMAGE: bitwarden-crs:latest
+        CRS_IMAGE: vaultwarden-crs:latest
     depends_on: [crs]
     ports:
       - "8002:80"
