@@ -31,7 +31,8 @@ COPY --from=crs /opt/crs /opt/crs
 RUN set -eu; \
     SO="$(find /usr/lib /usr/lib64 -name 'ngx_http_modsecurity_module.so' 2>/dev/null | head -n1)"; \
     test -n "$SO"; \
-    mkdir -p /var/log/modsec /var/log/angie; \
+    mkdir -p /var/log/modsec /var/log/angie /var/www/html; \
+    printf 'ok\n' > /var/www/html/index.html; \
     { \
       echo "load_module $SO;"; \
       echo 'user www-data;'; \
@@ -46,7 +47,8 @@ RUN set -eu; \
       echo '    server {'; \
       echo '        listen 80 default_server;'; \
       echo '        server_name ci.local;'; \
-      echo '        location / { return 200 "ok"; }'; \
+      echo '        root /var/www/html;'; \
+      echo '        location / { try_files $uri =404; }'; \
       echo '    }'; \
       echo '}'; \
     } > /etc/angie/angie.conf
