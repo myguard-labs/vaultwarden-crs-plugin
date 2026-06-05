@@ -34,3 +34,48 @@ tests:
         output:
           log:
             no_expect_ids: [9530245]
+  - test_id: 3
+    desc: "SignalR negotiate access_token query arg is allowed (/notifications/hub)"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: "/notifications/hub?access_token=abc.def.ghi"
+        output:
+          log:
+            no_expect_ids: [9530245]
+  - test_id: 4
+    desc: "Change-password icon lookup uri query arg is allowed (/icons/change-password-uri)"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: "/icons/change-password-uri?uri=https://example.com"
+        output:
+          log:
+            no_expect_ids: [9530245]
+  - test_id: 5
+    desc: "Admin diagnostics HTTP-probe code query arg is allowed (/admin/diagnostics/http)"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: "/admin/diagnostics/http?code=200"
+        output:
+          log:
+            no_expect_ids: [9530245]
