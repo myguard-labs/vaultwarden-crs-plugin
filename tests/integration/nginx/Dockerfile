@@ -48,7 +48,7 @@ RUN set -eu; \
       echo '        listen 80 default_server;'; \
       echo '        server_name ci.local;'; \
       echo '        root /var/www/html;'; \
-      echo '        location / { try_files $uri =404; }'; \
+      echo '        location / { try_files $uri $uri/ =404; }'; \
       echo '    }'; \
       echo '}'; \
     } > /etc/angie/angie.conf
