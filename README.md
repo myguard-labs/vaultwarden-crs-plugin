@@ -180,3 +180,7 @@ Open a new issue or pull request. For issues, include:
 - Write-up / deployment guide: [Self-Hosted Vaultwarden on deb.myguard.nl](https://deb.myguard.nl/2026/05/self-hosted-password-manager-with-vaultwarden/)
 - ViMbAdmin CRS plugin (same author, form-app variant with arg-name
   allowlist): <https://github.com/eilandert/vimbadmin-crs-plugin>
+- WAF engine deep-dive: [Coraza WAF on NGINX — the Go-powered ModSecurity
+  replacement](https://deb.myguard.nl/2026/06/coraza-waf-nginx-modsecurity-replacement/).
+  What Coraza and libcoraza are, and how the CRS (and this plugin) run on the
+  Go engine.
