@@ -4,7 +4,7 @@
 
 # Vaultwarden (Bitwarden) OWASP CRS Plugin
 
-![Lint](https://github.com/eilandert/vaultwarden-crs-plugin/actions/workflows/lint.yml/badge.svg) ![Integration tests](https://github.com/eilandert/vaultwarden-crs-plugin/actions/workflows/integration.yml/badge.svg) ![Apache + ModSecurity v2](https://github.com/eilandert/vaultwarden-crs-plugin/actions/workflows/apache-modsecurity2.yml/badge.svg) ![nginx + libmodsecurity3](https://github.com/eilandert/vaultwarden-crs-plugin/actions/workflows/nginx-libmodsecurity3.yml/badge.svg)
+![Lint](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/lint.yml/badge.svg) ![Integration tests](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/integration.yml/badge.svg) ![Apache + ModSecurity v2](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/apache-modsecurity2.yml/badge.svg) ![nginx + libmodsecurity3](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/nginx-libmodsecurity3.yml/badge.svg)
 
 A drop-in [OWASP CRS](https://coreruleset.org/) plugin that makes the Core
 Rule Set play nicely with **[Vaultwarden](https://github.com/dani-garcia/vaultwarden)**
@@ -179,4 +179,4 @@ Open a new issue or pull request. For issues, include:
 - Vaultwarden: <https://github.com/dani-garcia/vaultwarden>
 - Write-up / deployment guide: [Self-Hosted Vaultwarden on deb.myguard.nl](https://deb.myguard.nl/2026/05/self-hosted-password-manager-with-vaultwarden/)
 - ViMbAdmin CRS plugin (same author, form-app variant with arg-name
-  allowlist): <https://github.com/eilandert/vimbadmin-crs-plugin>
+  allowlist): <https://github.com/myguard-labs/vimbadmin-crs-plugin>
