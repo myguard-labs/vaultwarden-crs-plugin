@@ -41,16 +41,49 @@ It does two things:
    the backend, regardless of payload. **No arg-name allowlist** (see above).
 
 The route map is derived from Vaultwarden's source
-(`src/api/mod.rs` mount points + `src/api/web.rs` static routes), not guessed.
+(`src/main.rs` mount points + `src/api/web.rs` static routes) **and** the
+bundled `web-vault` static tree extracted from `vaultwarden/server:latest` —
+not guessed. It was last re-verified against source commit `169aa5e`.
 
-Since **1.1.0** the positive-security layer also: enforces an **HTTP-method
+The positive-security layer also: enforces an **HTTP-method
 allowlist** (only `GET/POST/PUT/DELETE/HEAD/OPTIONS` — `TRACE`, `CONNECT`,
 `PATCH`, junk verbs are denied, `9530220`); requires **`application/json`** on
 `/api` writes (except multipart `/api/sends/file*` and cipher attachment
-uploads, `9530225`); **anchors static-file extensions to known prefixes** so a
-deep fake path like `/x/y/z.json` no longer slips through the old global
-`\.<ext>$` suffix; and **feeds the CRS inbound anomaly score** on every block,
-so fail2ban / CRS DOS layers see the probe instead of a silent 404.
+uploads, `9530225`); **anchors static-file extensions to a single path
+segment** so a deep fake path like `/x/y/z.json` no longer slips through; and
+**feeds the CRS inbound anomaly score** on every block, so fail2ban / CRS DOS
+layers see the probe instead of a silent 404.
+
+### What's new in 2.0.0
+
+A full re-verification against fresh Vaultwarden source + the extracted
+`web-vault` Docker tree, plus fixes to four issues found in audit:
+
+- **Trailing-slash allowlist bypass — fixed.** In `<2.0.0` the root branch
+  `(?:^|/)(?:index\.html)?$` had a leading-slash alternative that matched the
+  *trailing* slash of **any** path, so `/wp-login.php/`, `/.env/` and
+  `/phpmyadmin/` sailed past the path allowlist. The branch is now anchored
+  (`^/?(?:index\.html)?$`).
+- **Enforcement rules could self-disable — fixed.** The method / Content-Type /
+  path deny rules (`9530220/9530225/9530230`) were tagged `OWASP_CRS`, so the
+  auth-path FP strip `9530105` (`ctl:ruleRemoveByTag=OWASP_CRS`) — or any
+  host-level `OWASP_CRS` tag strip — silently switched the positive-security
+  layer **off** on those paths. The tag was removed from the enforcement rules.
+- **Deep-nested probe tightening.** The mount/static-dir branch matched its
+  token at *any* depth (`(?:^|/)`), so `/wp-content/images/shell.php` slipped
+  through on the `images` segment. It now allows **at most one** optional
+  basepath segment (`^/?(?:[a-z0-9_-]+/)?…`).
+- **Case-insensitive Content-Type.** The `application/json` check now folds
+  case (`t:lowercase`), so `Content-Type: Application/JSON` no longer draws a
+  false `415`.
+- **Route-map corrections from the fresh scan:** root-level hashed JSON assets
+  (`.json`/`.xml`) are now allowed (a hashed `web-vault` bundle was being
+  404'd); the stale root-named-static branch (`bootstrap.*`, `datatables.*`,
+  `jquery-*`, `jdenticon-*`, `admin*.js`) was dropped — those are served under
+  `/vw_static/`, not the webroot; and the token form-field allowlist gained the
+  send-access fields `send_id` + `password_hash_b64`.
+- Consistent anomaly-score bump on every deny; all `ver:` normalised to
+  `2.0.0`.
 
 ### Argument-name allowlist (1.2.0, experimental, separate opt-in)
 
@@ -100,6 +133,7 @@ Edit `vaultwarden-config.conf`:
 |---|---|---|
 | `tx.vaultwarden-plugin_enabled` | `0` | Master on/off. **OFF by default** — the plugin weakens CRS on the Vaultwarden routes, so it must be enabled per vhost, not globally. Set to `1` only in the Vaultwarden server/location block (see Roll-out). |
 | `tx.vaultwarden-plugin_positive_security` | follows `_enabled` | Turn the path-allowlist layer on/off. Defaults to the enable flag; set to `0` explicitly in the enable block to run exclusions without the allowlist. |
+| `tx.vaultwarden-plugin_argname_allowlist` | `0` | Experimental, **independent** opt-in for the arg-name allowlists (`9530240` token form fields, `9530245` GET query names). Does **not** follow `_enabled`; enable only after a DetectionOnly burn-in. |
 
 Scoping is done entirely by the per-vhost enable flag — there is **no Host
 gate**. Enable the plugin only on the Vaultwarden vhost, e.g. (Angie /
@@ -137,7 +171,7 @@ pending formal assignment).
 
 ## Continuous integration
 
-Every push/PR runs five GitHub Actions workflows (each gets its own badge above):
+Every push/PR runs six GitHub Actions workflows (each gets its own badge above):
 
 | Workflow | What it does |
 |---|---|
@@ -145,7 +179,8 @@ Every push/PR runs five GitHub Actions workflows (each gets its own badge above)
 | **Integration tests** | Plugin-structure gates (no host gate, opt-in allowlist, **no `ARGS_NAMES` allowlist**, conditional config defaults, `ver:` on every rule). |
 | **Apache + ModSecurity v2** | Builds a shared CRS+plugin image and runs the go-ftw regression suite on real Apache httpd + mod_security2 (`apache2ctl -t` gates parse). |
 | **nginx + libmodsecurity3** | Same shared image on Angie + libmodsecurity3 3.0.14 — a production mirror (`angie -t` gates parse). |
-| **Coraza compatibility** | Loads every plugin file into `coraza.NewWAF()` (vendored probe in [`tests/coraza/`](tests/coraza/)) — Coraza fails hard at config load where ModSecurity warns, so this gates the third engine. Runs on PRs. |
+| **Coraza compatibility** | Loads every plugin file into `coraza.NewWAF()` (vendored probe in [`tests/coraza/`](tests/coraza/)) — Coraza fails hard at config load where ModSecurity warns, so this gates the third engine, and replays runtime transactions to prove rules actually *fire* (load-OK ≠ fires). Runs on PRs. |
+| **Security corpus** | Replays a corpus of real scanner/probe paths against the enabled plugin to prove the path/method allowlists deny them (regression guard for the trailing-slash and deep-nest bypass classes). |
 
 The dual-engine harness lives under [`tests/integration/`](tests/integration/);
 go-ftw test cases under [`tests/regression/`](tests/regression/) and
