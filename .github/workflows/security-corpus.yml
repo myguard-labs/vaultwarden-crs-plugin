@@ -1,0 +1,99 @@
+---
+# Security corpus: the false-positive (and, when present, adversarial evasion +
+# positive-security) payloads under tests/security, run against the SHARED
+# CRS+plugin image on Apache + ModSecurity v2. A rule that starts over-blocking
+# legitimate Vaultwarden traffic — or an attack that becomes bypassable
+# (obfuscated case, path dot-segments, encoding) — fails this check.
+#
+# Apache only: mod_security2 evaluates the corpus deterministically, so it is a
+# reliable mandatory gate + its own badge. The corpus also runs on all engines
+# via the per-engine workflows; this dedicated job gives the corpus a focused,
+# deterministic pass/fail signal.
+#
+# Security note: the only ${{ }} in a run: context is github.token; no
+# untrusted event input is interpolated anywhere.
+on: [push, pull_request]          # yamllint disable-line rule:truthy
+name: Security Corpus
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # renovate: datasource=github-releases depName=coreruleset/go-ftw
+  GO_FTW_VERSION: "v2.1.0"
+
+jobs:
+  security-corpus:
+    name: Corpus — ModSecurity v2
+    runs-on: [self-hosted, builder02, docker]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Build shared CRS image
+        run: docker compose -f tests/integration/docker-compose.yml build crs
+
+      - name: Build Apache image (apache2ctl -t gate)
+        run: docker compose -f tests/integration/docker-compose.yml build apache
+
+      - name: Prepare log file
+        run: |
+          mkdir -p tests/logs/apache
+          : > tests/logs/apache/audit.log
+          chmod -R 777 tests/logs
+
+      - name: Start Apache
+        run: |
+          docker compose -f tests/integration/docker-compose.yml up -d apache
+          for _ in $(seq 1 30); do
+            if curl -fsS -o /dev/null "http://127.0.0.1:8001/"; then
+              echo "apache up"; exit 0
+            fi
+            sleep 1
+          done
+          echo "apache did not become ready"
+          docker compose -f tests/integration/docker-compose.yml logs apache
+          exit 1
+
+      - name: Install go-ftw (retry on flaky tar/network)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in 1 2 3; do
+            rm -f ftw.tgz ftw
+            if gh release download -R coreruleset/go-ftw \
+                -p 'ftw_*_linux_amd64.tar.gz' -O ftw.tgz "${GO_FTW_VERSION}" \
+                && tar -xzf ftw.tgz ftw; then
+              break
+            fi
+            echo "ftw download attempt ${attempt} failed; retrying"
+            sleep 5
+          done
+          chmod +x ftw
+          test -x ftw
+
+      - name: Use committed go-ftw config (apache @ :8001)
+        run: cat tests/integration/.ftw.yml
+
+      - name: Run security corpus
+        run: |
+          ./ftw check -d tests/security --config tests/integration/.ftw.yml
+          ./ftw run   -d tests/security --config tests/integration/.ftw.yml \
+            --show-failures-only
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          echo "=== container logs ==="
+          docker compose -f tests/integration/docker-compose.yml logs apache || true
+          echo "=== modsec audit log ==="
+          tail -n 200 tests/logs/apache/audit.log || true
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f tests/integration/docker-compose.yml down -t 0 || true
