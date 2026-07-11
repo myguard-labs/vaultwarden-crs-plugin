@@ -7,7 +7,10 @@
 #
 # Security note: the only interpolation in a run: context is github.token;
 # no untrusted event input is used anywhere in this workflow.
-on: [push, pull_request]          # yamllint disable-line rule:truthy
+on:
+  push:
+    branches: [master]
+  pull_request:
 name: nginx + libmodsecurity3
 
 concurrency:
