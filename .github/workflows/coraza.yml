@@ -1,0 +1,34 @@
+---
+# Coraza v3 load gate. Coraza is the strictest of the three target engines:
+# it rejects the whole ruleset at config load where ModSecurity would warn
+# (PCRE-only regex constructs, persistent collections, unsupported actions).
+# This gate loads every plugin file into coraza.NewWAF() and fails on any
+# load error, keeping the plugin portable.
+#
+# Security note: no untrusted event input is interpolated anywhere.
+on: [pull_request]                # yamllint disable-line rule:truthy
+name: Coraza compatibility
+
+permissions:
+  contents: read
+
+jobs:
+  coraza-gate:
+    name: Coraza v3 load gate
+    runs-on: [self-hosted, builder02, lxc]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache-dependency-path: tests/coraza/go.sum
+
+      - name: Build probe
+        working-directory: tests/coraza
+        run: go build -o "$RUNNER_TEMP/coraza-probe" .
+
+      - name: Gate plugin rulesets (load into coraza.NewWAF)
+        working-directory: plugins
+        run: '"$RUNNER_TEMP/coraza-probe" ./*.conf'
