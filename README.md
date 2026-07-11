@@ -4,7 +4,9 @@
 
 # Vaultwarden (Bitwarden) OWASP CRS Plugin
 
-![Lint](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/lint.yml/badge.svg) ![Integration tests](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/integration.yml/badge.svg) ![Apache + ModSecurity v2](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/apache-modsecurity2.yml/badge.svg) ![nginx + libmodsecurity3](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/nginx-libmodsecurity3.yml/badge.svg)
+![Integration Tests](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/integration.yml/badge.svg) ![Apache/v2](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/apache-modsecurity2.yml/badge.svg) ![NGINX/v3](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/nginx-libmodsecurity3.yml/badge.svg) ![NGINX/Coraza](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/coraza.yml/badge.svg) ![WAF Corpus](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/security-corpus.yml/badge.svg)
+
+![Defense-in-depth: the vaultwarden-crs-plugin adds a PATH allowlist and false-positive exclusions at the WAF edge before requests reach the end-to-end encrypted Vaultwarden Rust backend and a hardened Docker container](https://deb.myguard.nl/wp-content/uploads/2026/07/vaultwarden-crs-plugin-defense-in-depth.webp)
 
 A drop-in [OWASP CRS](https://coreruleset.org/) plugin that makes the Core
 Rule Set play nicely with **[Vaultwarden](https://github.com/dani-garcia/vaultwarden)**
@@ -39,38 +41,18 @@ It does two things:
    the backend, regardless of payload. **No arg-name allowlist** (see above).
 
 The route map is derived from Vaultwarden's source
-(`src/api/mod.rs` mount points + `src/api/web.rs` static routes), not guessed.
+(`src/main.rs` mount points + `src/api/web.rs` static routes) **and** the
+bundled `web-vault` static tree extracted from `vaultwarden/server:latest` —
+not guessed. It was last re-verified against source commit `169aa5e`.
 
-Since **1.1.0** the positive-security layer also: enforces an **HTTP-method
+The positive-security layer also: enforces an **HTTP-method
 allowlist** (only `GET/POST/PUT/DELETE/HEAD/OPTIONS` — `TRACE`, `CONNECT`,
 `PATCH`, junk verbs are denied, `9530220`); requires **`application/json`** on
 `/api` writes (except multipart `/api/sends/file*` and cipher attachment
-uploads, `9530225`); **anchors static-file extensions to known prefixes** so a
-deep fake path like `/x/y/z.json` no longer slips through the old global
-`\.<ext>$` suffix; and **feeds the CRS inbound anomaly score** on every block,
-so fail2ban / CRS DOS layers see the probe instead of a silent 404.
-
-### Argument-name allowlist (1.2.0, experimental, separate opt-in)
-
-Vaultwarden is a JSON API, so a body arg-name allowlist is unsafe (keys vary
-per endpoint/client/version) and is **never** applied to JSON bodies. But the
-two *non-JSON* surfaces are stable and fully enumerable, so 1.2.0 adds an
-optional allowlist for them — gated by its **own** flag
-`tx.vaultwarden-plugin_argname_allowlist` (default OFF, independent of the
-path allowlist):
-
-- **`9530240`** — the `/identity/connect/token` form fields. This is the only
-  `x-www-form-urlencoded` endpoint; its field set is fixed by the
-  `ConnectData` struct in `src/api/identity.rs` (verified against source,
-  case-insensitive, snake_case + flattened variants). Scoped via
-  `ARGS_POST_NAMES` to that exact path — JSON bodies elsewhere are untouched.
-- **`9530245`** — GET query-string parameter names (`ARGS_GET_NAMES`).
-
-These live in `vaultwarden-before.conf` on purpose: their deny must evaluate
-**before** the CRS anomaly-blocking rule `949110` (otherwise a request CRS
-already scored ≥5 is blocked there first and the allowlist deny is never
-reached). Enable per vhost only after a DetectionOnly burn-in:
-`setvar:tx.vaultwarden-plugin_argname_allowlist=1`.
+uploads, `9530225`); **anchors static-file extensions to a single path
+segment** so a deep fake path like `/x/y/z.json` no longer slips through; and
+**feeds the CRS inbound anomaly score** on every block, so fail2ban / CRS DOS
+layers see the probe instead of a silent 404.
 
 ## Requirements
 
@@ -98,6 +80,7 @@ Edit `vaultwarden-config.conf`:
 |---|---|---|
 | `tx.vaultwarden-plugin_enabled` | `0` | Master on/off. **OFF by default** — the plugin weakens CRS on the Vaultwarden routes, so it must be enabled per vhost, not globally. Set to `1` only in the Vaultwarden server/location block (see Roll-out). |
 | `tx.vaultwarden-plugin_positive_security` | follows `_enabled` | Turn the path-allowlist layer on/off. Defaults to the enable flag; set to `0` explicitly in the enable block to run exclusions without the allowlist. |
+| `tx.vaultwarden-plugin_argname_allowlist` | `0` | Experimental, **independent** opt-in for the arg-name allowlists (`9530240` token form fields, `9530245` GET query names). Does **not** follow `_enabled`; enable only after a DetectionOnly burn-in. |
 
 Scoping is done entirely by the per-vhost enable flag — there is **no Host
 gate**. Enable the plugin only on the Vaultwarden vhost, e.g. (Angie /
@@ -135,17 +118,19 @@ pending formal assignment).
 
 ## Continuous integration
 
-Every push/PR runs four GitHub Actions workflows (each gets its own badge above):
+Every push/PR runs six GitHub Actions workflows (all but Lint get a badge above):
 
 | Workflow | What it does |
 |---|---|
-| **Lint** | Local rule-ID-range (9530000–9530999) / duplicate-ID / `@pmFromFile` / test-reference checks, then the official `coreruleset/crs-plugin-test-action` lint. |
-| **Integration tests** | Plugin-structure gates (no host gate, opt-in allowlist, **no `ARGS_NAMES` allowlist**, conditional config defaults, `ver:` on every rule). |
-| **Apache + ModSecurity v2** | Builds a shared CRS+plugin image and runs the go-ftw regression suite on real Apache httpd + mod_security2 (`apache2ctl -t` gates parse). |
-| **nginx + libmodsecurity3** | Same shared image on Angie + libmodsecurity3 3.0.14 — a production mirror (`angie -t` gates parse). |
+| **Lint** | Rule-ID-range (9530000–9530999) / duplicate-ID / `@pmFromFile` / test-reference checks, then the official `coreruleset/crs-plugin-test-action` lint. |
+| **Integration Tests** | Plugin-structure gates (no host gate, opt-in allowlist, **no `ARGS_NAMES` allowlist**, conditional config defaults, `ver:` on every rule). |
+| **Apache/v2** | Runs the go-ftw regression suite on real Apache httpd + mod_security2 (`apache2ctl -t` gates parse). |
+| **NGINX/v3** | Same suite on Angie + libmodsecurity3 3.0.14 — a production mirror (`angie -t` gates parse). |
+| **NGINX/Coraza** | Loads every plugin file into `coraza.NewWAF()` then replays runtime transactions — Coraza fails hard at config load where ModSecurity warns, and load-OK ≠ fires (PRs only). |
+| **WAF Corpus** | Replays real scanner/probe paths to prove the path/method allowlists deny them (regression guard for the trailing-slash + deep-nest bypass classes). |
 
-The dual-engine harness lives under [`tests/integration/`](tests/integration/);
-go-ftw test cases under [`tests/regression/`](tests/regression/) and
+The three-engine harness lives under [`tests/integration/`](tests/integration/);
+go-ftw cases under [`tests/regression/`](tests/regression/) and
 [`tests/security/`](tests/security/).
 
 ## Disabling the plugin

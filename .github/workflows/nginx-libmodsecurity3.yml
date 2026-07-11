@@ -7,8 +7,15 @@
 #
 # Security note: the only interpolation in a run: context is github.token;
 # no untrusted event input is used anywhere in this workflow.
-on: [push, pull_request]          # yamllint disable-line rule:truthy
-name: nginx + libmodsecurity3
+on:
+  push:
+    branches: [master]
+  pull_request:
+name: NGINX/v3
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -22,7 +29,9 @@ jobs:
     name: nginx + libmodsecurity3
     runs-on: [self-hosted, builder02, docker]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.2.2
+        with:
+          persist-credentials: false
 
       - name: Build shared CRS image
         run: docker compose -f tests/integration/docker-compose.yml build crs
@@ -39,7 +48,7 @@ jobs:
       - name: Start Angie
         run: |
           docker compose -f tests/integration/docker-compose.yml up -d nginx
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             if curl -fsS -o /dev/null "http://127.0.0.1:8002/"; then
               echo "angie up"; exit 0
             fi

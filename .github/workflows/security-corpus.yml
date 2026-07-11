@@ -1,8 +1,14 @@
 ---
-# Apache httpd + ModSecurity v2 (libapache2-mod-security2).
-# Builds the SHARED CRS+plugin image (tests/integration/crs) and runs the
-# go-ftw regression suite against it. `apache2ctl -t` runs at image build
-# time: an invalid rule fails the build.
+# Security corpus: the false-positive (and, when present, adversarial evasion +
+# positive-security) payloads under tests/security, run against the SHARED
+# CRS+plugin image on Apache + ModSecurity v2. A rule that starts over-blocking
+# legitimate Vaultwarden traffic — or an attack that becomes bypassable
+# (obfuscated case, path dot-segments, encoding) — fails this check.
+#
+# Apache only: mod_security2 evaluates the corpus deterministically, so it is a
+# reliable mandatory gate + its own badge. The corpus also runs on all engines
+# via the per-engine workflows; this dedicated job gives the corpus a focused,
+# deterministic pass/fail signal.
 #
 # Security note: the only ${{ }} in a run: context is github.token; no
 # untrusted event input is interpolated anywhere.
@@ -10,7 +16,7 @@ on:
   push:
     branches: [master]
   pull_request:
-name: Apache/v2
+name: WAF Corpus
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -24,8 +30,8 @@ env:
   GO_FTW_VERSION: "v2.1.0"
 
 jobs:
-  apache-modsecurity2:
-    name: Apache + ModSecurity v2
+  security-corpus:
+    name: Corpus — ModSecurity v2
     runs-on: [self-hosted, builder02, docker]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.2.2
@@ -77,10 +83,10 @@ jobs:
       - name: Use committed go-ftw config (apache @ :8001)
         run: cat tests/integration/.ftw.yml
 
-      - name: Run plugin regression suite
+      - name: Run security corpus
         run: |
-          ./ftw check -d tests/regression --config tests/integration/.ftw.yml
-          ./ftw run   -d tests/regression --config tests/integration/.ftw.yml \
+          ./ftw check -d tests/security --config tests/integration/.ftw.yml
+          ./ftw run   -d tests/security --config tests/integration/.ftw.yml \
             --show-failures-only
 
       - name: Dump logs on failure

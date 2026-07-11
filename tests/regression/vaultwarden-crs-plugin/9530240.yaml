@@ -55,3 +55,20 @@ tests:
         output:
           log:
             no_expect_ids: [9530240, 9530245]
+  - test_id: 4
+    desc: "2.0.0: send-access token fields (send_id, password_hash_b64) pass the allowlist"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+            Content-Type: application/x-www-form-urlencoded
+          port: 80
+          method: POST
+          uri: /identity/connect/token
+          data: "grant_type=send_access&send_id=abc&password_hash_b64=eGVub24="
+        output:
+          log:
+            no_expect_ids: [9530240]

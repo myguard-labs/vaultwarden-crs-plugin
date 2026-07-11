@@ -114,3 +114,48 @@ tests:
         output:
           log:
             no_expect_ids: [9530230]
+  - test_id: 8
+    desc: "2.0.0 fix: a trailing-slash scanner probe (/wp-login.php/) is denied (was a bypass in <2.0.0)"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: /wp-login.php/
+        output:
+          log:
+            expect_ids: [9530230]
+  - test_id: 9
+    desc: "2.0.0 fix: a trailing-slash dotfile probe (/.env/) is denied"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: /.env/
+        output:
+          log:
+            expect_ids: [9530230]
+  - test_id: 10
+    desc: "2.0.0 fix: a hashed root-level web-vault JSON asset passes the allowlist"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+          port: 80
+          method: GET
+          uri: /cca56971e438d22818d6.json
+        output:
+          log:
+            no_expect_ids: [9530230]
