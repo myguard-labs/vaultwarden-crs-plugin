@@ -4,7 +4,7 @@
 
 # Vaultwarden (Bitwarden) OWASP CRS Plugin
 
-![Lint](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/lint.yml/badge.svg) ![Integration tests](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/integration.yml/badge.svg) ![Apache + ModSecurity v2](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/apache-modsecurity2.yml/badge.svg) ![nginx + libmodsecurity3](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/nginx-libmodsecurity3.yml/badge.svg)
+![Lint](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/lint.yml/badge.svg) ![Integration tests](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/integration.yml/badge.svg) ![Apache + ModSecurity v2](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/apache-modsecurity2.yml/badge.svg) ![nginx + libmodsecurity3](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/nginx-libmodsecurity3.yml/badge.svg) ![Coraza compatibility](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/coraza.yml/badge.svg?event=pull_request)
 
 A drop-in [OWASP CRS](https://coreruleset.org/) plugin that makes the Core
 Rule Set play nicely with **[Vaultwarden](https://github.com/dani-garcia/vaultwarden)**
@@ -135,7 +135,7 @@ pending formal assignment).
 
 ## Continuous integration
 
-Every push/PR runs four GitHub Actions workflows (each gets its own badge above):
+Every push/PR runs five GitHub Actions workflows (each gets its own badge above):
 
 | Workflow | What it does |
 |---|---|
@@ -143,6 +143,7 @@ Every push/PR runs four GitHub Actions workflows (each gets its own badge above)
 | **Integration tests** | Plugin-structure gates (no host gate, opt-in allowlist, **no `ARGS_NAMES` allowlist**, conditional config defaults, `ver:` on every rule). |
 | **Apache + ModSecurity v2** | Builds a shared CRS+plugin image and runs the go-ftw regression suite on real Apache httpd + mod_security2 (`apache2ctl -t` gates parse). |
 | **nginx + libmodsecurity3** | Same shared image on Angie + libmodsecurity3 3.0.14 — a production mirror (`angie -t` gates parse). |
+| **Coraza compatibility** | Loads every plugin file into `coraza.NewWAF()` (vendored probe in [`tests/coraza/`](tests/coraza/)) — Coraza fails hard at config load where ModSecurity warns, so this gates the third engine. Runs on PRs. |
 
 The dual-engine harness lives under [`tests/integration/`](tests/integration/);
 go-ftw test cases under [`tests/regression/`](tests/regression/) and
