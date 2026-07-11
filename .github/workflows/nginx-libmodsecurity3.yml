@@ -11,7 +11,7 @@ on:
   push:
     branches: [master]
   pull_request:
-name: nginx + libmodsecurity3
+name: NGINX/v3
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

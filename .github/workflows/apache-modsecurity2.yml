@@ -10,7 +10,7 @@ on:
   push:
     branches: [master]
   pull_request:
-name: Apache + ModSecurity v2
+name: Apache/v2
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

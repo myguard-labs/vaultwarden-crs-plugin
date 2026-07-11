@@ -3,7 +3,7 @@ on:
   push:
     branches: [master]
   pull_request:
-name: Integration tests
+name: Integration Tests
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
