@@ -4,7 +4,9 @@
 
 # Vaultwarden (Bitwarden) OWASP CRS Plugin
 
-![Lint](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/lint.yml/badge.svg) ![Integration tests](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/integration.yml/badge.svg) ![Apache + ModSecurity v2](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/apache-modsecurity2.yml/badge.svg) ![nginx + libmodsecurity3](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/nginx-libmodsecurity3.yml/badge.svg) ![Coraza compatibility](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/coraza.yml/badge.svg?event=pull_request)
+![Lint](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/lint.yml/badge.svg) ![Integration tests](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/integration.yml/badge.svg) ![Apache + ModSecurity v2](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/apache-modsecurity2.yml/badge.svg) ![nginx + libmodsecurity3](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/nginx-libmodsecurity3.yml/badge.svg) ![Coraza compatibility](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/coraza.yml/badge.svg?event=pull_request) ![Security Corpus](https://github.com/myguard-labs/vaultwarden-crs-plugin/actions/workflows/security-corpus.yml/badge.svg)
+
+![Defense-in-depth: the vaultwarden-crs-plugin adds a PATH allowlist and false-positive exclusions at the WAF edge before requests reach the end-to-end encrypted Vaultwarden Rust backend and a hardened Docker container](https://deb.myguard.nl/wp-content/uploads/2026/07/vaultwarden-crs-plugin-defense-in-depth.webp)
 
 A drop-in [OWASP CRS](https://coreruleset.org/) plugin that makes the Core
 Rule Set play nicely with **[Vaultwarden](https://github.com/dani-garcia/vaultwarden)**
