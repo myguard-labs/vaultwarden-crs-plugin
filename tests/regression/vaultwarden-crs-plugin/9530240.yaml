@@ -78,3 +78,39 @@ tests:
           retry_once: true
           log:
             no_expect_ids: [9530240]
+  - test_id: 5
+    desc: "2.2.4: deeplinkScheme and deeplink_scheme form fields pass the allowlist"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+            Content-Type: application/x-www-form-urlencoded
+          port: 80
+          method: POST
+          uri: /identity/connect/token
+          data: "grant_type=password&username=u&password=p&scope=api%20offline_access&client_id=mobile&deviceType=0&deviceIdentifier=d&deviceName=n&deeplinkScheme=bitwarden&deeplink_scheme=bitwarden"
+        output:
+          retry_once: true
+          log:
+            no_expect_ids: [9530240]
+  - test_id: 6
+    desc: "2.2.4: a near-miss of deeplinkScheme is still denied (anchored match)"
+    stages:
+      - input:
+          dest_addr: 127.0.0.1
+          headers:
+            Host: ci.local
+            User-Agent: OWASP CRS
+            Accept: "*/*"
+            Content-Type: application/x-www-form-urlencoded
+          port: 80
+          method: POST
+          uri: /identity/connect/token
+          data: "grant_type=password&username=u&password=p&deeplinkSchemeX=bitwarden"
+        output:
+          retry_once: true
+          log:
+            expect_ids: [9530240]
